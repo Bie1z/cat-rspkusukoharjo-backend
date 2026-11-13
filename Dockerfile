@@ -1,6 +1,6 @@
-FROM php:8.2-apache
+FROM php:8.2-cli
 
-# Install ekstensi PHP yang dibutuhkan Laravel
+# Install dependencies sistem
 RUN apt-get update && apt-get install -y \
     libpng-dev \
     libonig-dev \
@@ -18,23 +18,17 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
-# Salin seluruh file proyek ke container
+# Salin seluruh file proyek
 COPY . .
 
-# Atur izin folder storage dan bootstrap/cache
-RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
-
-# Fix Apache MPM conflict error
-RUN a2dismod mpm_event mpm_worker && a2enmod mpm_prefork
-
-# Ubah DocumentRoot Apache ke folder public Laravel
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
-RUN sed -ri -s 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
-RUN sed -ri -s 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
-
-RUN a2enmod rewrite
-
-# Jalankan composer install saat build
+# Install vendor dependencies
 RUN composer install --no-dev --optimize-autoloader
 
-EXPOSE 80
+# Beri izin folder storage
+RUN chmod -R 777 storage bootstrap/cache
+
+# Port default Railway
+EXPOSE 8080
+
+# Jalankan server Laravel langsung menggunakan built-in server PHP
+CMD php artisan serve --host=0.0.0.0 --port=8080
